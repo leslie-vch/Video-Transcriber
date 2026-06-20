@@ -1,0 +1,63 @@
+.button {
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    opacity 0.15s ease,
+    transform 0.15s ease;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.75;
+  }
+}
+
+.button--primary {
+  background: #3652eb;
+  color: #fff;
+}
+
+.button--secondary {
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #555;
+}
+
+.button--ghost {
+  background: transparent;
+  color: #555;
+}
+
+.button--fullWidth {
+  width: 100%;
+}
+
+.button__spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: buttonSpin 0.8s linear infinite;
+}
+
+.button__text {
+  display: inline-flex;
+  align-items: center;
+}
+
+@keyframes buttonSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}

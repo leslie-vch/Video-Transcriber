@@ -1,0 +1,24 @@
+# Frontend
+node_modules/
+dist/
+.env
+.env.local
+
+# Backend
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Archivos temporales
+*.mp3
+*.wav
+*.m4a
+*.webm
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db

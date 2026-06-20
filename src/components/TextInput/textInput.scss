@@ -1,0 +1,31 @@
+.textInput {
+  width: 100%;
+}
+
+.textInput__label {
+  display: block;
+  margin-bottom: 8px;
+  color: #666;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.textInput__field {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  outline: none;
+
+  &:focus {
+    border-color: #999;
+  }
+
+  &:disabled {
+    background: #f2f2f2;
+    cursor: not-allowed;
+  }
+}

@@ -1,0 +1,20 @@
+@use "../../styles/colors" as colors;
+
+.feedbackMessage {
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.feedbackMessage--warning {
+  border: 1px solid colors.$color-warning-border;
+  background: colors.$color-warning-bg;
+  color: colors.$color-warning-text;
+}
+
+.feedbackMessage--error {
+  border: 1px solid colors.$color-error-border;
+  background: colors.$color-error-bg;
+  color: colors.$color-error-text;
+}

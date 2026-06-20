@@ -1,0 +1,15 @@
+.transcriptionForm {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.transcriptionForm__field {
+  flex: 1;
+}
+
+.transcriptionForm .button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}

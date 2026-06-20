@@ -1,0 +1,5 @@
+:root {
+  --sans: "Nunito", system-ui, "Segoe UI", Roboto, sans-serif;
+  --heading: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+}
