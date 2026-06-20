@@ -108,19 +108,18 @@ async def transcribe(req: TranscribeRequest):
         audio_path = os.path.join(tmpdir, "audio.mp3")
 
         result = subprocess.run(
-            [
-                "yt-dlp",
-                "--ffmpeg-location", "C:\\ffmpeg-8.1.1-essentials_build\\ffmpeg-8.1.1-essentials_build\\bin",
-                "--extract-audio",
-                "--audio-format", "mp3",
-                "--audio-quality", "0",
-                "--output", audio_path,
-                "--no-playlist",
-                url,
-            ],
-            capture_output=True,
-            text=True,
-        )
+    [
+        "yt-dlp",
+        "--extract-audio",
+        "--audio-format", "mp3",
+        "--audio-quality", "0",
+        "--output", audio_path,
+        "--no-playlist",
+        url,
+    ],
+    capture_output=True,
+    text=True,
+)
 
         if result.returncode != 0:
             print("yt-dlp error:", result.stderr)
