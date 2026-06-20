@@ -1,6 +1,5 @@
+import { BACKEND_URL } from "../constants/api";
 import type { TranscriptionResult } from "../types/transcription.types";
-
-const API_URL = "http://localhost:8000";
 
 type ApiErrorDetail =
   | string
@@ -31,7 +30,7 @@ function getErrorMessage(data: ApiErrorResponse): string {
 export async function transcribeVideo(
   url: string
 ): Promise<TranscriptionResult> {
-  const response = await fetch(`${API_URL}/transcribe`, {
+  const response = await fetch(`${BACKEND_URL}/transcribe`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
