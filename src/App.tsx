@@ -9,11 +9,15 @@ import "./App.scss";
 
 export default function App() {
   const [url, setUrl] = useState("");
-  const { loading, error, result, transcribe } = useTranscription();
+  const { loading, error, result, transcribe, transcribeFile } = useTranscription();
   const { copied, copy } = useClipboard();
 
   const handleTranscribe = () => {
     transcribe(url);
+  };
+
+  const handleFileSubmit = (file: File) => {
+    transcribeFile(file);
   };
 
   const handleCopy = () => {
@@ -36,6 +40,7 @@ export default function App() {
         error={error}
         onUrlChange={setUrl}
         onSubmit={handleTranscribe}
+        onFileSubmit={handleFileSubmit}
       />
 
       {result && (

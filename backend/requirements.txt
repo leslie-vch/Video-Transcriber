@@ -3,3 +3,4 @@ uvicorn[standard]
 openai
 yt-dlp
 python-multipart
+python-dotenv

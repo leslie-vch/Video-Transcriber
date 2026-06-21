@@ -24,7 +24,15 @@ function getErrorMessage(data: ApiErrorResponse): string {
     return detail.message;
   }
 
-  return "No pudimos transcribir el video. Intenta nuevamente.";
+  return "No pudimos transcribir el archivo. Intenta nuevamente.";
+}
+
+async function getResponseData(response: Response) {
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
 }
 
 export async function transcribeVideo(
@@ -38,7 +46,27 @@ export async function transcribeVideo(
     body: JSON.stringify({ url }),
   });
 
-  const data = await response.json();
+  const data = await getResponseData(response);
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
+}
+
+export async function transcribeUploadedFile(
+  file: File
+): Promise<TranscriptionResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${BACKEND_URL}/transcribe-file`, {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = await getResponseData(response);
 
   if (!response.ok) {
     throw new Error(getErrorMessage(data));

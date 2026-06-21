@@ -1,0 +1,94 @@
+// components/TranscriptionFileUpload/TranscriptionFileUpload.scss
+.transcriptionFileUpload {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &__input {
+    display: none;
+  }
+
+  &__dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 28px 16px;
+    border: 1.5px dashed #cbb8ff;
+    border-radius: 16px;
+    background: rgba(124, 58, 237, 0.03);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+
+    &:hover,
+    &--active {
+      border-color: #7c3aed;
+      background: rgba(124, 58, 237, 0.06);
+    }
+  }
+
+  &__icon {
+    width: 36px;
+    height: 36px;
+    color: #7c3aed;
+  }
+
+  &__dropzoneText {
+    margin: 0;
+    color: #7c3aed;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  &__fileRow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: #f3effe;
+  }
+
+  &__fileIcon {
+    width: 22px;
+    height: 22px;
+    color: #7c3aed;
+    flex-shrink: 0;
+  }
+
+  &__fileInfo {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__fileName {
+    margin: 0;
+    color: #13091f;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__fileSize {
+    margin: 2px 0 0;
+    color: #6b6680;
+    font-size: 12px;
+  }
+
+  &__fileRemove {
+    border: none;
+    background: none;
+    color: #6b6680;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 4px;
+
+    &:hover {
+      color: #13091f;
+    }
+  }
+}

@@ -1,7 +1,7 @@
 import Badge from "../Badge/Badge";
 import Card from "../Card/Card";
 import FeedbackMessage from "../FeedbackMessage/FeedbackMessage";
-import TranscriptionForm from "../TranscriptionForm/TranscriptionForm";
+import TranscriptionMethodTabs from "../TranscriptionMethodTabs/TranscriptionMethodTabs";
 import "./TranscriptionHero.scss";
 
 type Props = {
@@ -10,6 +10,7 @@ type Props = {
   error?: string | null;
   onUrlChange: (value: string) => void;
   onSubmit: () => void;
+  onFileSubmit: (file: File) => void;
 };
 
 export default function TranscriptionHero({
@@ -18,6 +19,7 @@ export default function TranscriptionHero({
   error,
   onUrlChange,
   onSubmit,
+  onFileSubmit,
 }: Props) {
   return (
     <section className="transcriptionHero" aria-labelledby="transcription-title">
@@ -55,12 +57,13 @@ export default function TranscriptionHero({
             <li>⇩ Exportar TXT o PDF</li>
           </ul>
 
-          <TranscriptionForm
-            url={url}
-            loading={loading}
-            onUrlChange={onUrlChange}
-            onSubmit={onSubmit}
-          />
+          <TranscriptionMethodTabs
+  url={url}
+  loading={loading}
+  onUrlChange={onUrlChange}
+  onSubmit={onSubmit}
+  onFileSubmit={onFileSubmit}
+/>
 
           <div className="transcriptionHero__feedback">
             {loading && (
