@@ -4,3 +4,4 @@ openai
 yt-dlp
 python-multipart
 python-dotenv
+youtube-transcript-api
