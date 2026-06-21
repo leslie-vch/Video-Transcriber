@@ -1,16 +1,16 @@
 import os
 import tempfile
 import subprocess
+from urllib.parse import urlparse
+
 from dotenv import load_dotenv
-
-
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
-from urllib.parse import urlparse
 
 load_dotenv()
+
 app = FastAPI()
 
 app.add_middleware(
@@ -20,12 +20,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+
+if not OPENAI_API_KEY:
+    raise RuntimeError("OPENAI_API_KEY no está configurada.")
+
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 class TranscribeRequest(BaseModel):
     url: str
-    language: str = "" 
+    language: str = ""
+
 
 def is_youtube_url(url: str) -> bool:
     parsed = urlparse(url.strip())
@@ -50,35 +56,79 @@ def get_friendly_download_error(stderr: str) -> dict:
         return {
             "code": "INVALID_URL",
             "message": "Ingresa una URL válida de YouTube.",
-            "hint": "Ejemplo: https://www.youtube.com/watch?v=..."
+            "hint": "Ejemplo: https://www.youtube.com/watch?v=...",
         }
 
     if "private video" in error:
         return {
             "code": "PRIVATE_VIDEO",
             "message": "No podemos transcribir videos privados.",
-            "hint": "Prueba con un video público de YouTube."
+            "hint": "Prueba con un video público de YouTube.",
         }
 
     if "video unavailable" in error or "this video is unavailable" in error:
         return {
             "code": "VIDEO_UNAVAILABLE",
             "message": "No pudimos acceder a ese video.",
-            "hint": "Verifica que el enlace funcione y que el video esté disponible."
+            "hint": "Verifica que el enlace funcione y que el video esté disponible.",
         }
 
-    if "sign in to confirm" in error or "age-restricted" in error:
+    if (
+        "sign in to confirm" in error
+        or "age-restricted" in error
+        or "confirm you're not a bot" in error
+        or "confirm you’re not a bot" in error
+    ):
         return {
-            "code": "RESTRICTED_VIDEO",
-            "message": "Este video tiene restricciones y no se puede transcribir.",
-            "hint": "Prueba con otro video público."
+            "code": "YOUTUBE_BLOCKED",
+            "message": "No pudimos acceder a este video desde YouTube.",
+            "hint": "Intenta con otro enlace público o sube el audio/video directamente.",
+        }
+
+    if "ffmpeg" in error:
+        return {
+            "code": "FFMPEG_ERROR",
+            "message": "No pudimos preparar el audio del video.",
+            "hint": "El servidor necesita FFmpeg para procesar el audio.",
         }
 
     return {
         "code": "DOWNLOAD_FAILED",
         "message": "No pudimos descargar el audio del video.",
-        "hint": "Revisa el enlace o intenta con otro video."
+        "hint": "Revisa el enlace o intenta con otro video público.",
     }
+
+
+def build_transcription_response(transcription):
+    return {
+        "text": transcription.text,
+        "language": transcription.language,
+        "segments": [
+            {
+                "start": round(segment.start, 2),
+                "end": round(segment.end, 2),
+                "text": segment.text.strip(),
+            }
+            for segment in transcription.segments
+        ],
+    }
+
+
+def transcribe_audio_file(file_path: str, language: str = ""):
+    with open(file_path, "rb") as audio_file:
+        kwargs = {
+            "model": "whisper-1",
+            "file": audio_file,
+            "response_format": "verbose_json",
+        }
+
+        if language:
+            kwargs["language"] = language
+
+        transcription = client.audio.transcriptions.create(**kwargs)
+
+    return build_transcription_response(transcription)
+
 
 @app.post("/transcribe")
 async def transcribe(req: TranscribeRequest):
@@ -90,7 +140,7 @@ async def transcribe(req: TranscribeRequest):
             detail={
                 "code": "EMPTY_URL",
                 "message": "Pega una URL de YouTube para continuar.",
-                "hint": "El campo no puede estar vacío."
+                "hint": "El campo no puede estar vacío.",
             },
         )
 
@@ -100,7 +150,7 @@ async def transcribe(req: TranscribeRequest):
             detail={
                 "code": "INVALID_URL",
                 "message": "Ingresa una URL válida de YouTube.",
-                "hint": "Ejemplo: https://www.youtube.com/watch?v=..."
+                "hint": "Ejemplo: https://www.youtube.com/watch?v=...",
             },
         )
 
@@ -108,27 +158,29 @@ async def transcribe(req: TranscribeRequest):
         audio_path = os.path.join(tmpdir, "audio.mp3")
 
         result = subprocess.run(
-    [
-        "yt-dlp",
-        "--extract-audio",
-        "--audio-format", "mp3",
-        "--audio-quality", "0",
-        "--output", audio_path,
-        "--no-playlist",
-        url,
-    ],
-    capture_output=True,
-    text=True,
-)
+            [
+                "yt-dlp",
+                "--extract-audio",
+                "--audio-format",
+                "mp3",
+                "--audio-quality",
+                "0",
+                "--output",
+                audio_path,
+                "--no-playlist",
+                url,
+            ],
+            capture_output=True,
+            text=True,
+        )
 
         if result.returncode != 0:
-            print("yt-dlp error:", result.stderr)
-
-            friendly_error = get_friendly_download_error(result.stderr)
+            print("yt-dlp error completo:")
+            print(result.stderr)
 
             raise HTTPException(
                 status_code=400,
-                detail=friendly_error,
+                detail=get_friendly_download_error(result.stderr),
             )
 
         if not os.path.exists(audio_path):
@@ -137,34 +189,51 @@ async def transcribe(req: TranscribeRequest):
                 detail={
                     "code": "AUDIO_NOT_GENERATED",
                     "message": "No pudimos preparar el audio del video.",
-                    "hint": "Intenta nuevamente en unos minutos."
+                    "hint": "Intenta nuevamente en unos minutos.",
                 },
             )
 
-        with open(audio_path, "rb") as audio_file:
-            kwargs = dict(
-                model="whisper-1",
-                file=audio_file,
-                response_format="verbose_json",
+        return transcribe_audio_file(audio_path, req.language)
+
+
+@app.post("/transcribe-file")
+async def transcribe_file(file: UploadFile = File(...), language: str = ""):
+    allowed_extensions = (".mp3", ".wav", ".m4a", ".mp4", ".webm", ".mpeg", ".mpga")
+
+    filename = file.filename or ""
+
+    if not filename.lower().endswith(allowed_extensions):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_FILE_TYPE",
+                "message": "Sube un archivo de audio o video válido.",
+                "hint": "Formatos recomendados: MP3, WAV, M4A, MP4 o WEBM.",
+            },
+        )
+
+    safe_filename = os.path.basename(filename)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        file_path = os.path.join(tmpdir, safe_filename)
+
+        with open(file_path, "wb") as buffer:
+            while chunk := await file.read(1024 * 1024):
+                buffer.write(chunk)
+
+        if not os.path.exists(file_path):
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "code": "UPLOAD_FAILED",
+                    "message": "No pudimos recibir el archivo.",
+                    "hint": "Intenta subirlo nuevamente.",
+                },
             )
 
-            if req.language:
-                kwargs["language"] = req.language
+        return transcribe_audio_file(file_path, language)
 
-            transcription = client.audio.transcriptions.create(**kwargs)
 
-        return {
-            "text": transcription.text,
-            "language": transcription.language,
-            "segments": [
-                {
-                    "start": round(s.start, 2),
-                    "end": round(s.end, 2),
-                    "text": s.text.strip(),
-                }
-                for s in transcription.segments
-            ],
-        }
 @app.get("/health")
 def health():
     return {"status": "ok"}

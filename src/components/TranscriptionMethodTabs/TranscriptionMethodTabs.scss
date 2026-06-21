@@ -1,0 +1,44 @@
+.transcriptionMethodTabs {
+  margin-top: 28px;
+
+  &__tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  &__tab {
+    flex: 1;
+    border: 1px solid #e3defa;
+    border-radius: 12px;
+    background: #fff;
+    color: #6b6680;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+
+    &--active {
+      border-color: #7c3aed;
+      color: #13091f;
+    }
+  }
+
+  &__hint {
+    margin: 12px 0 0;
+    color: #6b6680;
+    font-size: 13px;
+  }
+
+  &__hintAction {
+    border: none;
+    background: none;
+    padding: 0;
+    color: #7c3aed;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+}
