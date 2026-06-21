@@ -1,6 +1,6 @@
 import os
+import re
 import tempfile
-import subprocess
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
@@ -8,6 +8,12 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
+from youtube_transcript_api import (
+    YouTubeTranscriptApi,
+    TranscriptsDisabled,
+    NoTranscriptFound,
+    VideoUnavailable,
+)
 
 load_dotenv()
 
@@ -49,53 +55,49 @@ def is_youtube_url(url: str) -> bool:
     return parsed.netloc.lower() in valid_domains
 
 
-def get_friendly_download_error(stderr: str) -> dict:
-    error = stderr.lower()
+def extract_video_id(url: str) -> str | None:
+    pattern = r"(?:v=|youtu\.be/|/embed/|/shorts/|/v/)([0-9A-Za-z_-]{11})"
+    match = re.search(pattern, url)
+    return match.group(1) if match else None
 
-    if "is not a valid url" in error or "unsupported url" in error:
-        return {
-            "code": "INVALID_URL",
-            "message": "Ingresa una URL válida de YouTube.",
-            "hint": "Ejemplo: https://www.youtube.com/watch?v=...",
-        }
 
-    if "private video" in error:
-        return {
-            "code": "PRIVATE_VIDEO",
-            "message": "No podemos transcribir videos privados.",
-            "hint": "Prueba con un video público de YouTube.",
-        }
+def try_get_youtube_captions(video_id: str, language: str = ""):
+    """Intenta traer la transcripción oficial de YouTube. Devuelve None si no existe."""
+    ytt_api = YouTubeTranscriptApi()
+    languages = [language] if language else ["es", "en"]
 
-    if "video unavailable" in error or "this video is unavailable" in error:
-        return {
-            "code": "VIDEO_UNAVAILABLE",
-            "message": "No pudimos acceder a ese video.",
-            "hint": "Verifica que el enlace funcione y que el video esté disponible.",
-        }
+    try:
+        fetched = ytt_api.fetch(video_id, languages=languages)
+    except (TranscriptsDisabled, NoTranscriptFound, VideoUnavailable):
+        return None
+    except Exception as exc:
+        print(f"No se pudo obtener subtítulos de YouTube: {exc}")
+        return None
 
-    if (
-        "sign in to confirm" in error
-        or "age-restricted" in error
-        or "confirm you're not a bot" in error
-        or "confirm you’re not a bot" in error
-    ):
-        return {
-            "code": "YOUTUBE_BLOCKED",
-            "message": "No pudimos acceder a este video desde YouTube.",
-            "hint": "Intenta con otro enlace público o sube el audio/video directamente.",
-        }
+    segments = []
+    text_parts = []
 
-    if "ffmpeg" in error:
-        return {
-            "code": "FFMPEG_ERROR",
-            "message": "No pudimos preparar el audio del video.",
-            "hint": "El servidor necesita FFmpeg para procesar el audio.",
-        }
+    for snippet in fetched.snippets:
+        text = snippet.text.strip()
+        if not text:
+            continue
+
+        segments.append(
+            {
+                "start": round(snippet.start, 2),
+                "end": round(snippet.start + snippet.duration, 2),
+                "text": text,
+            }
+        )
+        text_parts.append(text)
+
+    if not segments:
+        return None
 
     return {
-        "code": "DOWNLOAD_FAILED",
-        "message": "No pudimos descargar el audio del video.",
-        "hint": "Revisa el enlace o intenta con otro video público.",
+        "text": " ".join(text_parts),
+        "language": fetched.language_code,
+        "segments": segments,
     }
 
 
@@ -154,46 +156,31 @@ async def transcribe(req: TranscribeRequest):
             },
         )
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        audio_path = os.path.join(tmpdir, "audio.mp3")
+    video_id = extract_video_id(url)
 
-        result = subprocess.run(
-            [
-                "yt-dlp",
-                "--extract-audio",
-                "--audio-format",
-                "mp3",
-                "--audio-quality",
-                "0",
-                "--output",
-                audio_path,
-                "--no-playlist",
-                url,
-            ],
-            capture_output=True,
-            text=True,
+    if not video_id:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_URL",
+                "message": "No pudimos identificar el video en esa URL.",
+                "hint": "Asegurate de pegar el link directo a un video de YouTube.",
+            },
         )
 
-        if result.returncode != 0:
-            print("yt-dlp error completo:")
-            print(result.stderr)
+    captions_result = try_get_youtube_captions(video_id, req.language)
 
-            raise HTTPException(
-                status_code=400,
-                detail=get_friendly_download_error(result.stderr),
-            )
+    if not captions_result:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "NO_CAPTIONS_AVAILABLE",
+                "message": "Este video no tiene subtítulos disponibles para transcribir.",
+                "hint": "Subí el audio o video directamente para transcribirlo.",
+            },
+        )
 
-        if not os.path.exists(audio_path):
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "code": "AUDIO_NOT_GENERATED",
-                    "message": "No pudimos preparar el audio del video.",
-                    "hint": "Intenta nuevamente en unos minutos.",
-                },
-            )
-
-        return transcribe_audio_file(audio_path, req.language)
+    return captions_result
 
 
 @app.post("/transcribe-file")
